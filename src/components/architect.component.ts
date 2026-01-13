@@ -30,25 +30,25 @@ import { IconComponent } from './ui/icon.component';
 
       <!-- Main Content (Stepper) -->
       <div class="flex-1 overflow-y-auto scroll-smooth" #scrollContainer (scroll)="onScroll()">
-        <div class="max-w-3xl mx-auto p-6 pb-20">
+        <div class="max-w-3xl mx-auto p-4 md:p-6 pb-20">
           
-          <!-- Progress Bar -->
-          <div class="flex items-center justify-between mb-10 px-4">
+          <!-- Progress Bar (Scrollable on mobile) -->
+          <div class="flex items-center justify-between mb-8 md:mb-10 px-1 overflow-x-auto scrollbar-hide pb-2">
              @for (step of steps; track $index) {
-                <div class="flex flex-col items-center gap-2 cursor-pointer relative z-10 group" 
+                <div class="flex flex-col items-center gap-2 cursor-pointer relative z-10 group min-w-[60px]" 
                      (click)="currentStep.set($index)"
                      [class.opacity-50]="currentStep() < $index">
-                  <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 shadow-sm group-hover:scale-110"
+                  <div class="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs md:text-sm font-bold transition-all duration-300 shadow-sm group-hover:scale-110"
                        [class.bg-[var(--arch-accent-bg)]]="currentStep() >= $index"
                        [class.text-[var(--arch-on-accent)]]="currentStep() >= $index"
                        [class.bg-[var(--arch-bg-step-inactive)]]="currentStep() < $index"
                        [class.text-[var(--arch-text-secondary)]]="currentStep() < $index">
                     {{ $index + 1 }}
                   </div>
-                  <span class="text-xs font-bold tracking-wide" [class.text-[var(--arch-accent)]]="currentStep() >= $index">{{ wf.t(step.label) }}</span>
+                  <span class="text-[10px] md:text-xs font-bold tracking-wide whitespace-nowrap" [class.text-[var(--arch-accent)]]="currentStep() >= $index">{{ wf.t(step.label) }}</span>
                 </div>
                 @if ($index < steps.length - 1) {
-                  <div class="flex-1 h-[2px] mx-2 rounded-full transition-colors duration-500" 
+                  <div class="flex-1 h-[2px] mx-1 md:mx-2 min-w-[20px] rounded-full transition-colors duration-500" 
                        [class.bg-[var(--arch-accent-bg)]]="currentStep() > $index"
                        [class.bg-[var(--arch-bg-step-inactive)]]="currentStep() <= $index"></div>
                 }
@@ -243,14 +243,14 @@ import { IconComponent } from './ui/icon.component';
              <!-- Step 5: Result -->
              @if (currentStep() === 4) {
                <div class="space-y-4 animate-fadeIn">
-                 <div class="p-6 bg-[var(--arch-bg-card)] border border-[var(--arch-border)] rounded-2xl relative shadow-sm">
-                    <pre class="whitespace-pre-wrap text-sm font-mono text-[var(--text-primary)] overflow-x-auto leading-relaxed">{{ generatedPrompt() }}</pre>
+                 <div class="p-4 md:p-6 bg-[var(--arch-bg-card)] border border-[var(--arch-border)] rounded-2xl relative shadow-sm">
+                    <pre class="whitespace-pre-wrap text-xs md:text-sm font-mono text-[var(--text-primary)] overflow-x-auto leading-relaxed">{{ generatedPrompt() }}</pre>
                  </div>
-                  <div class="flex gap-3 justify-end">
-                    <button type="button" (click)="copyToClipboard()" class="px-6 py-2.5 rounded-full text-[var(--arch-accent)] font-bold hover:bg-black/10 transition-colors flex items-center gap-2">
+                  <div class="flex gap-3 justify-end flex-wrap">
+                    <button type="button" (click)="copyToClipboard()" class="px-5 py-2 md:px-6 md:py-2.5 rounded-full text-[var(--arch-accent)] font-bold hover:bg-black/10 transition-colors flex items-center gap-2 text-sm">
                       <app-icon name="content_copy" [size]="18"></app-icon> {{ wf.t('common.copy') }}
                     </button>
-                    <button type="button" (click)="onRefineWithDirector()" class="px-6 py-2.5 rounded-full bg-[var(--arch-accent-bg)] text-[var(--arch-on-accent)] hover:opacity-90 font-bold transition-all shadow-md active:scale-95 flex items-center gap-2">
+                    <button type="button" (click)="onRefineWithDirector()" class="px-5 py-2 md:px-6 md:py-2.5 rounded-full bg-[var(--arch-accent-bg)] text-[var(--arch-on-accent)] hover:opacity-90 font-bold transition-all shadow-md active:scale-95 flex items-center gap-2 text-sm">
                       <app-icon name="psychology" [size]="18"></app-icon> {{ wf.t('arch.btn_refine') }}
                     </button>
                   </div>
@@ -264,38 +264,38 @@ import { IconComponent } from './ui/icon.component';
       <!-- Scroll Down Button -->
       @if (showScrollButton()) {
         <button (click)="scrollToBottom()" 
-                class="absolute bottom-24 right-6 w-12 h-12 rounded-full bg-[var(--arch-accent-bg)] text-[var(--arch-on-accent)] shadow-lg flex items-center justify-center hover:opacity-90 transition-all z-20 animate-bounce-in">
+                class="absolute bottom-24 right-4 md:right-6 w-10 h-10 md:w-12 md:h-12 rounded-full bg-[var(--arch-accent-bg)] text-[var(--arch-on-accent)] shadow-lg flex items-center justify-center hover:opacity-90 transition-all z-20 animate-bounce-in">
           <app-icon name="arrow_downward" [size]="24"></app-icon>
         </button>
       }
 
       <!-- Footer Actions -->
-      <div class="p-4 bg-[var(--arch-bg-card)] border-t border-[var(--arch-border)] flex justify-between items-center z-10">
+      <div class="p-3 md:p-4 bg-[var(--arch-bg-card)] border-t border-[var(--arch-border)] flex justify-between items-center z-10">
          @if (currentStep() > 0 && currentStep() < 4) {
-           <button type="button" (click)="prevStep()" class="px-8 py-3 rounded-full text-[var(--arch-accent)] font-bold hover:bg-black/10 transition-colors flex items-center gap-2">
+           <button type="button" (click)="prevStep()" class="px-4 py-2 md:px-8 md:py-3 rounded-full text-[var(--arch-accent)] font-bold hover:bg-black/10 transition-colors flex items-center gap-2 text-sm">
              <app-icon name="arrow_back" [size]="18"></app-icon>
-             {{ wf.t('common.back') }}
+             <span class="hidden md:inline">{{ wf.t('common.back') }}</span>
            </button>
          } @else {
            <div></div>
          }
 
          @if (currentStep() < 3) {
-           <button type="button" (click)="nextStep()" class="px-8 py-3 rounded-full bg-[var(--arch-accent-bg)] text-[var(--arch-on-accent)] font-bold hover:opacity-90 shadow-md transition-all active:scale-95 flex items-center gap-2">
+           <button type="button" (click)="nextStep()" class="px-6 py-2 md:px-8 md:py-3 rounded-full bg-[var(--arch-accent-bg)] text-[var(--arch-on-accent)] font-bold hover:opacity-90 shadow-md transition-all active:scale-95 flex items-center gap-2 text-sm">
              {{ wf.t('common.next') }}
              <app-icon name="arrow_forward" [size]="18"></app-icon>
            </button>
          } @else if (currentStep() === 3) {
             <button type="button" (click)="generate()" 
               [disabled]="isGenerating()"
-              class="px-8 py-3 rounded-full bg-[var(--arch-accent-bg)] text-[var(--arch-on-accent)] font-bold hover:opacity-90 shadow-lg transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2">
+              class="px-6 py-2 md:px-8 md:py-3 rounded-full bg-[var(--arch-accent-bg)] text-[var(--arch-on-accent)] font-bold hover:opacity-90 shadow-lg transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 text-sm">
               @if (isGenerating()) {
                 <span class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
               }
               {{ wf.t('arch.btn_generate') }}
            </button>
          } @else {
-            <button type="button" (click)="currentStep.set(0)" class="px-8 py-3 rounded-full border border-[var(--arch-accent)] text-[var(--arch-accent)] font-bold hover:bg-black/10 transition-colors">
+            <button type="button" (click)="currentStep.set(0)" class="px-4 py-2 md:px-8 md:py-3 rounded-full border border-[var(--arch-accent)] text-[var(--arch-accent)] font-bold hover:bg-black/10 transition-colors text-sm">
              {{ wf.t('common.start_over') }}
            </button>
          }
@@ -312,6 +312,8 @@ import { IconComponent } from './ui/icon.component';
       }
     </div>
     <style>
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
       @keyframes bounce-in {
         0% { transform: scale(0); opacity: 0; }
         50% { transform: scale(1.1); }

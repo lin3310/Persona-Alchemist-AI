@@ -1,4 +1,4 @@
-import { Component, output, inject } from '@angular/core';
+import { Component, output, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WorkflowService } from '../services/workflow.service';
 import { IconComponent } from './ui/icon.component';
@@ -7,51 +7,63 @@ import { IconComponent } from './ui/icon.component';
   selector: 'app-home',
   standalone: true,
   imports: [CommonModule, IconComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="min-h-full flex flex-col items-center justify-center p-4 sm:p-8 bg-[var(--bg-body)] text-[var(--text-primary)] font-sans relative">
+    <div class="min-h-full flex flex-col items-center justify-center p-6 sm:p-12 bg-[var(--bg-body)] text-[var(--text-primary)] font-sans relative overflow-hidden">
       
       <!-- Settings Corner -->
-      <div class="absolute top-4 right-4 flex gap-3">
+      <div class="absolute top-6 right-6 flex gap-3 z-50">
         <!-- Theme Toggle -->
-        <button (click)="wf.cycleTheme()" class="w-10 h-10 flex items-center justify-center bg-[var(--bg-surface-container)] rounded-full text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">
-          <app-icon [name]="wf.themeIcon()" [size]="20"></app-icon>
+        <button (click)="wf.cycleTheme()" class="w-12 h-12 flex items-center justify-center bg-[var(--bg-surface-container)] rounded-full text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors shadow-sm">
+          <app-icon [name]="wf.themeIcon()" [size]="24"></app-icon>
         </button>
         <!-- Lang Toggle -->
-        <button (click)="wf.cycleLang()" class="px-3 py-1 bg-[var(--bg-surface-container)] rounded-full text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors uppercase">
+        <button (click)="wf.cycleLang()" class="px-4 py-2 bg-[var(--bg-surface-container)] rounded-full text-sm font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors uppercase shadow-sm">
           {{ wf.currentLang() }}
         </button>
       </div>
 
-      <div class="text-center mb-12 animate-fade-in-down">
-        <h1 class="text-5xl mb-2 text-[var(--text-primary)]" style="font-family: 'Patrick Hand', cursive;">{{ wf.t('home.title') }}</h1>
-        <p class="text-2xl text-[var(--text-primary)]" style="font-family: 'Patrick Hand', cursive;">{{ wf.t('home.subtitle') }}</p>
+      <div class="text-center mb-16 animate-fade-in-down max-w-4xl mx-auto">
+        <h1 class="text-6xl md:text-7xl lg:text-8xl mb-6 text-[var(--text-primary)] font-display font-black tracking-tight leading-none drop-shadow-sm">
+          {{ wf.t('home.title') }}
+        </h1>
+        <p class="text-2xl md:text-3xl text-[var(--text-secondary)] font-hand opacity-90">
+          {{ wf.t('home.subtitle') }}
+        </p>
       </div>
 
       <!-- New Layout -->
-      <div class="w-full max-w-5xl mx-auto animate-fade-in-up">
+      <div class="w-full max-w-6xl mx-auto animate-fade-in-up delay-100">
         <div class="flex flex-col gap-12">
           
           <!-- Main Workflow Card -->
-          <div class="w-full bg-[var(--vibe-bg-card)] border border-[var(--vibe-border)] rounded-3xl p-8 shadow-lg flex flex-col justify-between">
-            <div>
-              <h2 class="text-3xl font-bold text-[var(--vibe-accent)] mb-2">{{ wf.t('home.workflow_title') }}</h2>
-              <p class="text-[var(--vibe-accent)]/80 mb-8">{{ wf.t('home.workflow_desc') }}</p>
+          <div class="w-full bg-[var(--vibe-bg-card)] border border-[var(--vibe-border)] rounded-[2rem] p-8 md:p-12 shadow-xl flex flex-col justify-between relative overflow-hidden group">
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[var(--vibe-accent)] to-[var(--vibe-border)]"></div>
+            
+            <div class="relative z-10 mb-8">
+              <h2 class="text-3xl md:text-4xl font-display font-bold text-[var(--vibe-accent)] mb-3">{{ wf.t('home.workflow_title') }}</h2>
+              <p class="text-[var(--vibe-accent)]/80 text-lg max-w-2xl">{{ wf.t('home.workflow_desc') }}</p>
             </div>
-            <div class="space-y-4">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
               <!-- Vibe Mode Button -->
-              <button (click)="selectMode.emit('pipeline')" class="w-full text-left p-6 rounded-2xl bg-[var(--vibe-accent-bg)] text-[var(--vibe-on-accent)] shadow-md hover:shadow-lg hover:-translate-y-1 transition-all flex items-center gap-4">
-                <app-icon name="palette" [size]="32"></app-icon>
+              <button (click)="selectMode.emit('pipeline')" class="w-full text-left p-6 md:p-8 rounded-2xl bg-[var(--vibe-accent-bg)] text-[var(--vibe-on-accent)] shadow-md hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex items-center gap-6 group/btn">
+                <div class="p-3 bg-white/20 rounded-full group-hover/btn:scale-110 transition-transform">
+                   <app-icon name="palette" [size]="36"></app-icon>
+                </div>
                 <div>
-                  <span class="text-xl font-bold">{{ wf.t('home.mode_vibe') }}</span>
-                  <p class="text-sm opacity-80">{{ wf.t('home.desc_vibe') }} {{ wf.t('home.recommended') }}</p>
+                  <span class="text-2xl font-bold font-display block mb-1">{{ wf.t('home.mode_vibe') }}</span>
+                  <p class="text-sm opacity-90 leading-relaxed">{{ wf.t('home.desc_vibe') }} <span class="font-bold">{{ wf.t('home.recommended') }}</span></p>
                 </div>
               </button>
                <!-- Director Mode Button -->
-              <button (click)="selectMode.emit('director')" class="w-full text-left p-6 rounded-2xl bg-[var(--vibe-accent-bg-alt)] border border-[var(--vibe-border)] text-[var(--vibe-accent)] hover:shadow-lg hover:bg-[var(--vibe-bg-main)] hover:-translate-y-1 transition-all flex items-center gap-4">
-                 <app-icon name="psychology" [size]="32"></app-icon>
+              <button (click)="selectMode.emit('director')" class="w-full text-left p-6 md:p-8 rounded-2xl bg-[var(--vibe-bg-main)] border-2 border-[var(--vibe-border)] text-[var(--vibe-accent)] hover:shadow-xl hover:border-[var(--vibe-accent)] hover:-translate-y-1 transition-all duration-300 flex items-center gap-6 group/btn">
+                 <div class="p-3 bg-[var(--vibe-bg-header)] rounded-full group-hover/btn:scale-110 transition-transform">
+                    <app-icon name="psychology" [size]="36"></app-icon>
+                 </div>
                  <div>
-                    <span class="text-xl font-bold">{{ wf.t('home.mode_director') }}</span>
-                    <p class="text-sm opacity-80">{{ wf.t('home.desc_director') }}</p>
+                    <span class="text-2xl font-bold font-display block mb-1">{{ wf.t('home.mode_director') }}</span>
+                    <p class="text-sm opacity-80 leading-relaxed">{{ wf.t('home.desc_director') }}</p>
                  </div>
               </button>
             </div>
@@ -59,30 +71,36 @@ import { IconComponent } from './ui/icon.component';
 
           <!-- Standalone Tools Section -->
           <div>
-            <h2 class="text-center text-xl font-bold text-[var(--text-secondary)] mb-6">{{ wf.t('home.tools_title') }}</h2>
+            <h2 class="text-center text-xl font-bold text-[var(--text-secondary)] mb-8 uppercase tracking-widest opacity-60">{{ wf.t('home.tools_title') }}</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
               <!-- Architect -->
-              <button (click)="selectMode.emit('architect')" class="p-6 rounded-2xl text-left bg-[var(--arch-bg-card)] border border-[var(--arch-border)] text-[var(--arch-accent)] hover:shadow-lg hover:-translate-y-1 transition-all flex items-center gap-4 h-full">
-                <app-icon name="architecture" [size]="32"></app-icon>
+              <button (click)="selectMode.emit('architect')" class="p-6 rounded-2xl text-left bg-[var(--arch-bg-card)] border border-[var(--arch-border)] text-[var(--arch-accent)] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col gap-4 h-full group">
+                <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-[var(--arch-accent-bg)]/10 text-[var(--arch-accent)] group-hover:bg-[var(--arch-accent-bg)] group-hover:text-[var(--arch-on-accent)] transition-colors">
+                   <app-icon name="architecture" [size]="28"></app-icon>
+                </div>
                 <div>
-                  <span class="text-xl font-bold">{{ wf.t('home.mode_arch') }}</span>
-                  <p class="text-sm opacity-80 mt-1">{{ wf.t('home.desc_arch') }}</p>
+                  <span class="text-xl font-bold font-display block">{{ wf.t('home.mode_arch') }}</span>
+                  <p class="text-sm opacity-70 mt-2 leading-relaxed">{{ wf.t('home.desc_arch') }}</p>
                 </div>
               </button>
               <!-- Tool -->
-              <button (click)="selectMode.emit('tool')" class="p-6 rounded-2xl text-left bg-[var(--tool-bg-main)] border border-[var(--tool-border)] text-[var(--tool-text-header)] hover:shadow-lg hover:-translate-y-1 transition-all flex items-center gap-4 h-full">
-                 <app-icon name="precision_manufacturing" [size]="32"></app-icon>
+              <button (click)="selectMode.emit('tool')" class="p-6 rounded-2xl text-left bg-[var(--tool-bg-main)] border border-[var(--tool-border)] text-[var(--tool-text-header)] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col gap-4 h-full group">
+                 <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-[var(--tool-accent)]/10 text-[var(--tool-text-header)] group-hover:bg-[var(--tool-accent)] group-hover:text-[var(--tool-on-accent)] transition-colors">
+                    <app-icon name="precision_manufacturing" [size]="28"></app-icon>
+                 </div>
                  <div>
-                  <span class="text-xl font-bold">{{ wf.t('home.mode_tool') }}</span>
-                  <p class="text-sm opacity-80 mt-1">{{ wf.t('home.desc_tool') }}</p>
+                  <span class="text-xl font-bold font-display block">{{ wf.t('home.mode_tool') }}</span>
+                  <p class="text-sm opacity-70 mt-2 leading-relaxed">{{ wf.t('home.desc_tool') }}</p>
                 </div>
               </button>
                <!-- Anti-Bias -->
-              <button (click)="selectMode.emit('antibias')" class="p-6 rounded-2xl text-left bg-[var(--antibias-bg-main)] border border-[var(--antibias-border)] text-[var(--antibias-text-header)] hover:shadow-lg hover:-translate-y-1 transition-all flex items-center gap-4 h-full">
-                 <app-icon name="hub" [size]="32"></app-icon>
+              <button (click)="selectMode.emit('antibias')" class="p-6 rounded-2xl text-left bg-[var(--antibias-bg-main)] border border-[var(--antibias-border)] text-[var(--antibias-text-header)] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col gap-4 h-full group">
+                 <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-[var(--antibias-accent)]/10 text-[var(--antibias-accent)] group-hover:bg-[var(--antibias-accent)] group-hover:text-[var(--antibias-on-accent)] transition-colors">
+                    <app-icon name="hub" [size]="28"></app-icon>
+                 </div>
                  <div>
-                  <span class="text-xl font-bold">{{ wf.t('home.mode_antibias') }}</span>
-                  <p class="text-sm opacity-80 mt-1">{{ wf.t('home.desc_antibias') }}</p>
+                  <span class="text-xl font-bold font-display block">{{ wf.t('home.mode_antibias') }}</span>
+                  <p class="text-sm opacity-70 mt-2 leading-relaxed">{{ wf.t('home.desc_antibias') }}</p>
                 </div>
               </button>
             </div>
@@ -94,18 +112,19 @@ import { IconComponent } from './ui/icon.component';
   `,
   styles: [`
     @keyframes fade-in-down {
-      from { opacity: 0; transform: translateY(-20px); }
+      from { opacity: 0; transform: translateY(-30px); }
       to { opacity: 1; transform: translateY(0); }
     }
     @keyframes fade-in-up {
-      from { opacity: 0; transform: translateY(20px); }
+      from { opacity: 0; transform: translateY(30px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    .animate-fade-in-down { animation: fade-in-down 0.6s ease-out forwards; }
+    .animate-fade-in-down { animation: fade-in-down 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
     .animate-fade-in-up { 
-        animation: fade-in-up 0.6s ease-out 0.2s forwards;
-        opacity: 0; /* Start hidden for animation */
+        animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        opacity: 0;
     }
+    .delay-100 { animation-delay: 0.1s; }
   `]
 })
 export class HomeComponent {

@@ -71,7 +71,10 @@ export type AnsweredQuestion = { questionId: string, questionText: string, answe
           @for (category of filteredCategories(); track category.id) {
             <div>
               <div (click)="toggleCategory(category.id)" class="flex justify-between items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[var(--vibe-bg-header)]">
-                <h3 class="font-bold text-[var(--text-primary)]">{{ category.icon }} {{ category.title }}</h3>
+                <h3 class="font-bold text-[var(--text-primary)] flex items-center gap-2">
+                   <app-icon [name]="category.icon" [size]="20" class="text-[var(--vibe-accent)]"></app-icon>
+                   {{ category.title }}
+                </h3>
                 <span class="arrow transition-transform duration-300 text-[var(--text-secondary)]" [class.expanded]="isExpanded(category.id)">
                    <app-icon name="expand_more" [size]="24"></app-icon>
                 </span>
@@ -86,7 +89,11 @@ export type AnsweredQuestion = { questionId: string, questionText: string, answe
                       [class.used]="isUsed(question.id)"
                       class="question-item w-full text-left p-3 rounded-lg hover:bg-[var(--vibe-bg-header)] transition-colors flex items-center gap-3 text-[var(--text-secondary)]">
                       <span class="font-bold text-lg leading-none text-[var(--vibe-accent)]">
-                        {{ isUsed(question.id) ? '✓' : '•' }}
+                        @if (isUsed(question.id)) {
+                           <app-icon name="check_circle" [size]="18"></app-icon>
+                        } @else {
+                           <app-icon name="radio_button_unchecked" [size]="18" class="opacity-50"></app-icon>
+                        }
                       </span>
                       <span>{{ question.text }}</span>
                     </button>
@@ -113,15 +120,19 @@ export type AnsweredQuestion = { questionId: string, questionText: string, answe
       @if(editingQuestion(); as question) {
         <div class="absolute inset-0 z-50 flex items-center justify-center p-4">
            <div (click)="$event.stopPropagation()" class="bg-[var(--vibe-bg-card)] rounded-2xl shadow-xl w-full max-w-lg p-6 border border-[var(--vibe-border)] edit-card">
-              <h3 class="text-xl font-bold text-[var(--text-primary)] mb-4">
-                {{ editingRandom() ? '🎲' : categoryIcon() }} {{ question.text }}
+              <h3 class="text-xl font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                <app-icon [name]="editingRandom() ? 'casino' : categoryIcon()" [size]="28" class="text-[var(--vibe-accent)]"></app-icon>
+                {{ question.text }}
               </h3>
 
               <textarea #editInput [(ngModel)]="editCardInput" class="w-full bg-[var(--vibe-bg-input)] border border-[var(--vibe-border)] rounded-lg p-3 text-sm focus:ring-2 focus:ring-[var(--vibe-accent)] outline-none text-[var(--text-primary)]" rows="4"></textarea>
 
               <div class="mt-4 text-sm text-[var(--text-secondary)] flex justify-between items-start gap-4">
                  <div>
-                    <strong>{{ wf.t('inspiration.example_label') }}</strong>
+                    <div class="flex items-center gap-1 mb-1 text-[var(--vibe-accent)]">
+                        <app-icon name="lightbulb" [size]="16"></app-icon>
+                        <strong class="text-sm">{{ wf.t('inspiration.example_label') }}</strong>
+                    </div>
                     <pre class="whitespace-pre-wrap font-sans leading-tight">{{ question.example }}</pre>
                  </div>
                  <div class="text-right text-xs max-w-[45%] shrink-0">

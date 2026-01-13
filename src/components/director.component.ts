@@ -16,6 +16,10 @@ import { Chat } from '@google/genai';
       <!-- Header -->
       <div class="flex items-center justify-between p-4 shadow-sm z-10 bg-[var(--vibe-bg-header)] text-[var(--vibe-accent)] border-b border-[var(--vibe-border)]">
         <div class="flex items-center gap-3">
+          <!-- Back Button (Left) -->
+          <button (click)="goBack()" class="p-2 rounded-full hover:bg-black/10 transition-colors">
+             <app-icon name="arrow_back" [size]="24"></app-icon>
+          </button>
           <div class="w-10 h-10 rounded-full text-[var(--vibe-on-accent)] flex items-center justify-center bg-[var(--vibe-accent-bg)]">
              <app-icon name="psychology" [size]="24"></app-icon>
           </div>
@@ -24,10 +28,6 @@ import { Chat } from '@google/genai';
             <p class="text-xs opacity-70">{{ wf.t('director.subtitle') }}</p>
           </div>
         </div>
-        <!-- Rollback/Back Button -->
-        <button (click)="goBack()" class="px-3 py-1 rounded-full border text-xs font-bold hover:bg-black/10 transition-colors border-[var(--vibe-accent)]">
-          {{ wf.t('common.back') }}
-        </button>
       </div>
 
       <!-- Chat Area -->
@@ -77,29 +77,29 @@ import { Chat } from '@google/genai';
 
       <!-- Scroll Button -->
       @if (showScrollButton()) {
-        <button (click)="scrollToBottom()" class="absolute bottom-24 right-6 w-10 h-10 rounded-full shadow-md flex items-center justify-center hover:opacity-90 transition-all z-20 animate-bounce-in border bg-[var(--vibe-bg-header)] text-[var(--vibe-accent)] border-[var(--vibe-border)]">
+        <button (click)="scrollToBottom()" class="absolute bottom-32 right-4 md:right-6 w-10 h-10 md:w-12 md:h-12 rounded-full shadow-md flex items-center justify-center hover:opacity-90 transition-all z-20 animate-bounce-in border bg-[var(--vibe-bg-header)] text-[var(--vibe-accent)] border-[var(--vibe-border)]">
           <app-icon name="arrow_downward" [size]="20"></app-icon>
         </button>
       }
 
       <!-- Input Area -->
-      <div class="p-4 bg-[var(--vibe-bg-card)] border-t z-10 border-[var(--vibe-border)]">
+      <div class="p-3 md:p-4 bg-[var(--vibe-bg-card)] border-t z-10 border-[var(--vibe-border)]">
         <div class="flex gap-2 items-end max-w-4xl mx-auto relative">
           <textarea [(ngModel)]="userInput" (keydown.enter)="sendMessage($event)" placeholder="Reply to the Director..."
-            class="w-full rounded-3xl py-3 px-5 pr-14 outline-none focus:ring-2 resize-none overflow-hidden min-h-[52px] max-h-[150px] bg-[var(--vibe-bg-input)] focus:ring-[var(--vibe-accent)] text-[var(--text-primary)]"
+            class="w-full rounded-3xl py-3 px-4 md:px-5 pr-14 outline-none focus:ring-2 resize-none overflow-hidden min-h-[50px] max-h-[150px] bg-[var(--vibe-bg-input)] focus:ring-[var(--vibe-accent)] text-[var(--text-primary)] text-sm md:text-base"
             rows="1"></textarea>
           <button (click)="sendMessage()" [disabled]="!userInput.trim() || isProcessing()"
-            class="absolute right-2 bottom-2 w-10 h-10 rounded-full text-[var(--vibe-on-accent)] flex items-center justify-center hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95 bg-[var(--vibe-accent-bg)]">
+            class="absolute right-2 bottom-2 w-9 h-9 md:w-10 md:h-10 rounded-full text-[var(--vibe-on-accent)] flex items-center justify-center hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95 bg-[var(--vibe-accent-bg)]">
             <app-icon name="send" [size]="20"></app-icon>
           </button>
         </div>
-        <div class="text-center mt-2 flex justify-center gap-4">
+        <div class="text-center mt-2 flex justify-center gap-2 md:gap-4 flex-wrap">
            <!-- Auto-Fill Button -->
            <button (click)="sendMessage({text: wf.t('director.skip_text')})" 
                    [disabled]="isProcessing()" 
                    class="text-xs hover:bg-black/5 font-bold px-3 py-1.5 rounded-full border transition-colors flex items-center gap-1 text-[var(--vibe-accent)] border-[var(--vibe-border)]">
              <app-icon name="auto_awesome" [size]="14"></app-icon>
-             {{ wf.t('director.skip_btn') }}
+             <span class="truncate max-w-[120px] md:max-w-none">{{ wf.t('director.skip_btn') }}</span>
            </button>
 
            <!-- Finish Button -->
@@ -167,7 +167,8 @@ export class DirectorComponent implements OnInit, AfterViewChecked {
                 groundingChunkMap.set(ch.web.uri, ch);
             }
         }
-        this.messages.update(m => [...m.slice(0, -1), { role: 'model', text: fullText, isStreaming: true }]);
+        const intermediateChunks = Array.from(groundingChunkMap.values());
+        this.messages.update(m => [...m.slice(0, -1), { role: 'model', text: fullText, isStreaming: true, groundingChunks: intermediateChunks }]);
       }
       const finalChunks = Array.from(groundingChunkMap.values());
       this.messages.update(m => [...m.slice(0, -1), { role: 'model', text: fullText, isStreaming: false, groundingChunks: finalChunks }]);
@@ -177,8 +178,21 @@ export class DirectorComponent implements OnInit, AfterViewChecked {
     } finally { this.isProcessing.set(false); }
   }
 
-  async sendMessage(event?: Event | { text: string }) {
-    if (event && 'preventDefault' in event) event.preventDefault();
+  async sendMessage(event?: any) {
+    // FIX: Handle Shift+Enter for new lines
+    if (event) {
+        if (event instanceof KeyboardEvent) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+            } else if (event.key === 'Enter' && event.shiftKey) {
+                return; // Allow new line
+            }
+        } else if ('text' in event) {
+            // It's a button click or manual object
+        } else {
+             event.preventDefault();
+        }
+    }
     
     const text = (event && 'text' in event) ? event.text : this.userInput;
     if (!text.trim() || this.isProcessing()) return;
@@ -204,7 +218,8 @@ export class DirectorComponent implements OnInit, AfterViewChecked {
                 groundingChunkMap.set(ch.web.uri, ch);
             }
         }
-        this.messages.update(m => [...m.slice(0, -1), { role: 'model', text: fullText, isStreaming: true }]);
+        const intermediateChunks = Array.from(groundingChunkMap.values());
+        this.messages.update(m => [...m.slice(0, -1), { role: 'model', text: fullText, isStreaming: true, groundingChunks: intermediateChunks }]);
         if (!this.showScrollButton()) this.scrollToBottom();
       }
       const finalChunks = Array.from(groundingChunkMap.values());

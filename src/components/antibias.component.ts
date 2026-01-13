@@ -193,8 +193,19 @@ export class AntiBiasComponent implements OnInit, AfterViewChecked {
     }
   }
 
-  async sendMessage(event?: Event) {
-    if (event) event.preventDefault();
+  async sendMessage(event?: any) {
+    if (event) {
+        if (event instanceof KeyboardEvent) {
+             if (event.key === 'Enter' && !event.shiftKey) {
+                 event.preventDefault();
+             } else if (event.key === 'Enter' && event.shiftKey) {
+                 return; 
+             }
+        } else {
+             event.preventDefault();
+        }
+    }
+
     if (!this.userInput.trim() || this.isProcessing()) return;
 
     const userText = this.userInput;
@@ -220,10 +231,11 @@ export class AntiBiasComponent implements OnInit, AfterViewChecked {
                 groundingChunkMap.set(ch.web.uri, ch);
             }
         }
+        const intermediateChunks = Array.from(groundingChunkMap.values());
         this.messages.update(m => {
           const last = m[m.length - 1];
           if (last.role === 'model' && last.isStreaming) {
-             return [...m.slice(0, -1), { ...last, text: fullText }];
+             return [...m.slice(0, -1), { ...last, text: fullText, groundingChunks: intermediateChunks }];
           }
           return m;
         });

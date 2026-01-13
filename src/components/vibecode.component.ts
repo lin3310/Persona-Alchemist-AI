@@ -1,4 +1,4 @@
-import { Component, inject, signal, ElementRef, ViewChild, AfterViewChecked, OnInit, output, computed } from '@angular/core';
+import { Component, inject, signal, ElementRef, ViewChild, AfterViewChecked, OnInit, output, computed, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GeminiService } from '../services/gemini.service';
@@ -11,6 +11,7 @@ import { InspirationModalComponent, AnswerMap, AnsweredQuestion } from './inspir
   selector: 'app-vibecode',
   standalone: true,
   imports: [CommonModule, FormsModule, IconComponent, InspirationModalComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col h-full relative bg-[var(--vibe-bg-main)]">
       
@@ -20,32 +21,32 @@ import { InspirationModalComponent, AnswerMap, AnsweredQuestion } from './inspir
           <button (click)="goBack()" class="p-2 rounded-full hover:bg-black/5 transition-colors">
              <app-icon name="arrow_back" [size]="24"></app-icon>
           </button>
-          <div class="w-10 h-10 rounded-full flex items-center justify-center bg-[var(--vibe-accent-bg)] text-[var(--vibe-on-accent)]">
+          <div class="w-10 h-10 rounded-full flex items-center justify-center bg-[var(--vibe-accent-bg)] text-[var(--vibe-on-accent)] shadow-sm">
              <app-icon name="palette" [size]="24"></app-icon>
           </div>
           <div>
-            <h2 class="text-lg font-bold">{{ wf.t('vibe.title') }}</h2>
-            <p class="text-xs opacity-80 font-medium">{{ wf.t('vibe.subtitle') }}</p>
+            <h2 class="text-xl font-bold font-display tracking-wide">{{ wf.t('vibe.title') }}</h2>
+            <p class="text-xs opacity-80 font-medium font-body">{{ wf.t('vibe.subtitle') }}</p>
           </div>
         </div>
       </div>
 
       <!-- Content -->
-      <div class="flex-1 flex flex-col justify-between overflow-y-auto p-6" #scrollContainer>
+      <div class="flex-1 flex flex-col justify-between overflow-y-auto p-4 sm:p-6 scroll-smooth" #scrollContainer>
         <!-- Chat History -->
-        <div class="w-full max-w-3xl mx-auto space-y-6">
+        <div class="w-full max-w-3xl mx-auto space-y-6 pb-4">
           @for (msg of messages(); track $index) {
             <div class="flex w-full animate-fadeIn" [class.justify-start]="msg.role === 'model'" [class.justify-end]="msg.role === 'user'">
-              <div class="max-w-[85%] flex flex-col" [class.items-end]="msg.role === 'user'" [class.items-start]="msg.role === 'model'">
+              <div class="max-w-[90%] md:max-w-[85%] flex flex-col" [class.items-end]="msg.role === 'user'" [class.items-start]="msg.role === 'model'">
                 <div class="flex gap-3 items-start" [class.flex-row-reverse]="msg.role === 'user'">
                   <!-- Avatar -->
-                  <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xs shadow-sm bg-[var(--vibe-bg-header)] text-[var(--vibe-accent)]"
+                  <div class="flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs shadow-sm bg-[var(--vibe-bg-header)] text-[var(--vibe-accent)]"
                        [class.bg-[var(--vibe-bg-bubble-user)]]="msg.role === 'user'"
                        [class.text-[var(--vibe-on-accent)]]="msg.role === 'user'">
                     <app-icon [name]="msg.role === 'model' ? 'brush' : 'person'" [size]="20"></app-icon>
                   </div>
                   <!-- Bubble -->
-                  <div class="p-4 rounded-2xl text-sm leading-relaxed shadow-sm whitespace-pre-wrap font-serif"
+                  <div class="p-4 rounded-2xl text-sm md:text-base leading-relaxed shadow-sm whitespace-pre-wrap font-serif"
                        [class.bg-[var(--vibe-bg-bubble-model)]]="msg.role === 'model'" 
                        [class.text-[var(--text-primary)]]="msg.role === 'model'"
                        [class.rounded-tl-none]="msg.role === 'model'"
@@ -63,7 +64,7 @@ import { InspirationModalComponent, AnswerMap, AnsweredQuestion } from './inspir
                      <div class="flex flex-wrap gap-2">
                        @for(chunk of msg.groundingChunks; track chunk.web.uri) {
                          <a [href]="chunk.web.uri" target="_blank" rel="noopener noreferrer" 
-                            class="flex items-center gap-1.5 bg-[var(--vibe-bg-card)] px-2 py-1 rounded-md hover:underline text-[var(--vibe-accent)] border border-[var(--vibe-border)]">
+                            class="flex items-center gap-1.5 bg-[var(--vibe-bg-card)] px-2 py-1 rounded-md hover:underline text-[var(--vibe-accent)] border border-[var(--vibe-border)] transition-colors">
                            <app-icon name="public" [size]="14"></app-icon>
                            <span class="truncate max-w-[200px]">{{ chunk.web.title || chunk.web.uri }}</span>
                          </a>
@@ -77,46 +78,43 @@ import { InspirationModalComponent, AnswerMap, AnsweredQuestion } from './inspir
         </div>
 
         <!-- Input Area -->
-        <div class="pt-8 pb-4 w-full max-w-xl mx-auto">
-          <div class="text-center">
+        <div class="pt-4 pb-2 w-full max-w-xl mx-auto sticky bottom-0">
+          <div class="relative bg-[var(--vibe-bg-main)]/90 backdrop-blur-sm p-2 rounded-t-2xl">
               <div>
-                <h3 class="text-lg font-semibold text-center mb-4 text-[var(--vibe-accent)]">
-                   ...
-                </h3>
-                <div class="relative">
+                <div class="relative group">
                   <textarea [(ngModel)]="userInput" (keydown.enter)="sendMessage($event)" 
                       [placeholder]="wf.t('vibe.placeholder')"
-                      class="w-full rounded-2xl py-3 px-5 pr-14 outline-none focus:ring-2 resize-none overflow-hidden bg-[var(--vibe-bg-input)] text-[var(--text-primary)] focus:ring-[var(--vibe-accent)]"
-                      rows="3"></textarea>
+                      class="w-full rounded-2xl py-4 px-5 pr-14 outline-none focus:ring-2 resize-none overflow-hidden bg-[var(--vibe-bg-input)] text-[var(--text-primary)] focus:ring-[var(--vibe-accent)] shadow-md border border-[var(--vibe-border)] transition-all"
+                      rows="2"></textarea>
                   <button (click)="sendMessage()" [disabled]="!userInput.trim() || isProcessing()"
-                      class="absolute right-3 top-3 w-10 h-10 rounded-full text-[var(--vibe-on-accent)] flex items-center justify-center disabled:opacity-50 transition-all shadow-md active:scale-95 bg-[var(--vibe-accent-bg)]">
-                      <app-icon name="sync_alt" [size]="20"></app-icon>
+                      class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full text-[var(--vibe-on-accent)] flex items-center justify-center disabled:opacity-50 transition-all shadow-md active:scale-95 bg-[var(--vibe-accent-bg)] hover:brightness-110">
+                      <app-icon name="arrow_upward" [size]="20"></app-icon>
                   </button>
                 </div>
               </div>
 
-            <div class="mt-4 text-sm text-center">
-              <button (click)="showInspirationModal.set(true)" class="hover:opacity-80 transition-colors p-1 rounded font-medium text-[var(--vibe-accent)]">
-                 <span class="font-bold">💡 {{ wf.t('vibe.inspiration') }}</span>
+            <div class="mt-3 flex justify-between items-center px-2">
+              <button (click)="showInspirationModal.set(true)" class="hover:bg-[var(--vibe-bg-header)] transition-colors px-3 py-1.5 rounded-full font-bold text-[var(--vibe-accent)] flex items-center gap-1.5 text-xs uppercase tracking-wide">
+                 <app-icon name="lightbulb" [size]="16"></app-icon>
+                 <span>{{ wf.t('vibe.inspiration') }}</span>
                  @if(answeredCount() > 0) {
-                    <span class="text-xs ml-1"> ({{ answeredCount() }})</span>
+                    <span class="bg-[var(--vibe-accent)] text-[var(--vibe-on-accent)] px-1.5 rounded-full text-[10px]">{{ answeredCount() }}</span>
                  }
               </button>
-            </div>
-            
-            <!-- Actions -->
-            <div class="flex gap-3 justify-center mt-6">
+              
+              <!-- Analyze Button -->
               <button (click)="crystallize()" [disabled]="(messages().length < 2 && !userInput) || isCrystallizing()"
-                class="px-8 py-3 rounded-full text-[var(--vibe-on-accent)] font-bold tracking-wide uppercase text-sm shadow-lg hover:opacity-90 transition-all active:scale-95 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed bg-[var(--vibe-accent-bg)]">
-                {{ wf.t('vibe.analyze_btn') }}
+                class="flex items-center gap-2 px-6 py-2 rounded-full text-[var(--vibe-on-accent)] font-bold tracking-wide uppercase text-xs shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-[var(--vibe-accent)] to-[#b94033]">
+                <span>{{ wf.t('vibe.analyze_btn') }}</span>
+                <app-icon name="auto_awesome" [size]="16"></app-icon>
               </button>
             </div>
-
           </div>
         </div>
       </div>
     </div>
     
+    <!-- Inspiration Modal -->
     @if(showInspirationModal()) {
       <app-inspiration-modal 
         [initialAnswers]="answeredQuestions()"
@@ -125,27 +123,40 @@ import { InspirationModalComponent, AnswerMap, AnsweredQuestion } from './inspir
       />
     }
 
-    <!-- Crystallizing Overlay -->
+    <!-- Alchemical Crystallization Overlay -->
     @if (isCrystallizing()) {
-      <div class="absolute inset-0 bg-white/80 dark:bg-black/70 backdrop-blur-sm z-50 flex flex-col items-center justify-center transition-opacity duration-300 animate-fadeIn">
-        <div class="text-center p-8">
-          <div class="relative w-24 h-24 mb-6">
-            <div class="absolute inset-0 border-4 rounded-full border-[var(--vibe-border)]"></div>
-            <div class="absolute inset-0 border-4 border-t-transparent rounded-full animate-spin border-t-[var(--vibe-accent)]"></div>
-          </div>
-          <h3 class="text-2xl font-bold animate-pulse text-[var(--vibe-accent)]">{{ wf.t('common.compiling') }}</h3>
-          <p class="mt-2 opacity-70 dark:text-gray-300">{{ wf.t('vibe.compiling_desc') }}</p>
+      <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex flex-col items-center justify-center animate-fadeIn text-white">
+        
+        <!-- Animated Sigil -->
+        <div class="relative w-32 h-32 mb-8">
+           <!-- Outer Ring -->
+           <div class="absolute inset-0 border-2 border-white/20 rounded-full animate-[spin_10s_linear_infinite]"></div>
+           <!-- Inner Dashed Ring -->
+           <div class="absolute inset-4 border-2 border-dashed border-white/40 rounded-full animate-[spin_8s_linear_infinite_reverse]"></div>
+           <!-- Core Pulse -->
+           <div class="absolute inset-0 flex items-center justify-center">
+              <div class="w-4 h-4 bg-white rounded-full animate-ping"></div>
+           </div>
+           <!-- Rotating Icon -->
+           <div class="absolute inset-0 flex items-center justify-center animate-pulse">
+              <app-icon name="psychology" [size]="48" class="text-white/90"></app-icon>
+           </div>
         </div>
+
+        <h3 class="text-2xl md:text-3xl font-display font-bold text-white tracking-widest uppercase mb-2 animate-pulse text-center">
+           {{ loadingStepText() }}
+        </h3>
+        <p class="text-white/60 font-mono text-sm">{{ wf.t('vibe.compiling_desc') }}</p>
       </div>
     }
 
     <style>
-      @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-      .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      .animate-fadeIn { animation: fadeIn 0.4s ease-out forwards; }
     </style>
   `
 })
-export class VibeCodeComponent implements OnInit, AfterViewChecked {
+export class VibeCodeComponent implements OnInit, AfterViewChecked, OnDestroy {
   private gemini = inject(GeminiService);
   wf = inject(WorkflowService); // Public for template
   private chatSession: Chat | null = null;
@@ -164,7 +175,16 @@ export class VibeCodeComponent implements OnInit, AfterViewChecked {
   answeredQuestions = signal<AnswerMap>(new Map());
   answeredCount = computed(() => this.answeredQuestions().size);
 
-  showModificationSuggestions = signal(false);
+  // Loading Animation State
+  loadingStepText = signal('Initializing...');
+  private loadingInterval: any;
+  private loadingSteps = [
+    'Extracting Keywords...',
+    'Analyzing Vibe Spectrum...',
+    'Detecting Archetypes...',
+    'Forging Personality Core...',
+    'Crystallizing...'
+  ];
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
 
@@ -193,6 +213,10 @@ export class VibeCodeComponent implements OnInit, AfterViewChecked {
       this.needsScroll = false;
     }
   }
+  
+  ngOnDestroy() {
+    if (this.loadingInterval) clearInterval(this.loadingInterval);
+  }
 
   scrollToBottom() { try { this.scrollContainer.nativeElement.scrollTop = this.scrollContainer.nativeElement.scrollHeight; } catch(e){} }
 
@@ -217,7 +241,6 @@ export class VibeCodeComponent implements OnInit, AfterViewChecked {
     }
 
     this.messages.update(m => [...m, { role: 'user', text: textToSend }]);
-    this.showModificationSuggestions.set(false);
     this.needsScroll = true;
     this.isProcessing.set(true);
 
@@ -232,9 +255,7 @@ export class VibeCodeComponent implements OnInit, AfterViewChecked {
         fullText += chunk.text;
         const newChunks = chunk.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
         for (const ch of newChunks) {
-            if (ch.web?.uri) {
-                groundingChunkMap.set(ch.web.uri, ch);
-            }
+            if (ch.web?.uri) groundingChunkMap.set(ch.web.uri, ch);
         }
         this.messages.update(m => [...m.slice(0, -1), { role: 'model', text: fullText, isStreaming: true }]);
         this.needsScroll = true;
@@ -265,10 +286,9 @@ export class VibeCodeComponent implements OnInit, AfterViewChecked {
   private consolidateAnswers() {
     const answers = this.answeredQuestions();
     if (answers.size > 0) {
-      const summary = Array.from(answers.values())
+      this.userInput = Array.from(answers.values())
         .map((item: { questionText: string; answer: string; }) => item.answer)
         .join('; ');
-      this.userInput = summary;
     } else {
       this.userInput = '';
     }
@@ -281,10 +301,11 @@ export class VibeCodeComponent implements OnInit, AfterViewChecked {
     }
     
     let conversation = currentMessages.map(m => `${m.role}: ${m.text}`).join('\n');
-
     if (!conversation.replace(/user:|model:/g, '').trim()) return;
 
+    this.startLoadingAnimation();
     this.isCrystallizing.set(true);
+    
     try {
       const structuredResult = await this.gemini.structureVibe(conversation);
       this.wf.pushState({ 
@@ -298,8 +319,22 @@ export class VibeCodeComponent implements OnInit, AfterViewChecked {
       console.error("Failed to crystallize vibe:", e);
       alert("An error occurred while analyzing your ideas. Please try again.");
     } finally {
+      this.stopLoadingAnimation();
       this.isCrystallizing.set(false);
     }
+  }
+
+  private startLoadingAnimation() {
+      let stepIndex = 0;
+      this.loadingStepText.set(this.loadingSteps[0]);
+      this.loadingInterval = setInterval(() => {
+          stepIndex = (stepIndex + 1) % this.loadingSteps.length;
+          this.loadingStepText.set(this.loadingSteps[stepIndex]);
+      }, 1200); // Change text every 1.2 seconds
+  }
+
+  private stopLoadingAnimation() {
+      if (this.loadingInterval) clearInterval(this.loadingInterval);
   }
 
   goBack() {

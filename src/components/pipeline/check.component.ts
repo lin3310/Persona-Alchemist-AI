@@ -68,11 +68,11 @@ import { IconComponent } from '../ui/icon.component';
                  @for (conflict of conflicts(); track $index) {
                    <div class="bg-[var(--vibe-bg-card)] rounded-xl border border-[#ffe082] dark:border-[#6b5b27] shadow-sm overflow-hidden animate-slideUp" [style.animation-delay]="$index * 100 + 'ms'">
                       <div class="p-4 border-b border-[#ffe082] dark:border-[#6b5b27] bg-[#fffbf0] dark:bg-[#2e260e] flex items-center gap-2">
-                         <span class="text-xl">⚠️</span>
+                         <app-icon name="warning" [size]="24" class="text-orange-600 dark:text-orange-400"></app-icon>
                          <div class="font-bold text-[#5d4037] dark:text-yellow-200 flex items-center gap-2 flex-wrap">
                             @for (card of conflict.cards; track card; let isLast = $last) {
                                <span class="px-2 py-0.5 bg-white dark:bg-[#4a3f1a] border border-[#ffe082] dark:border-[#6b5b27] rounded text-xs uppercase">{{card}}</span>
-                               @if (!isLast) { <span class="text-xs text-gray-400">⚔️</span> }
+                               @if (!isLast) { <app-icon name="compare_arrows" [size]="16" class="text-gray-400"></app-icon> }
                             }
                          </div>
                          <span class="ml-auto text-xs font-bold px-2 py-1 rounded bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 uppercase">{{conflict.severity}}</span>
@@ -141,31 +141,35 @@ import { IconComponent } from '../ui/icon.component';
             <h3 class="text-2xl font-bold text-[var(--vibe-accent)]">{{ wf.t('check.remix_modal.title') }}</h3>
             <p class="text-sm text-[var(--text-secondary)] mt-1">{{ wf.t('check.remix_modal.desc') }}</p>
           </div>
+          
           <div class="p-6 space-y-4 overflow-y-auto max-h-[60vh]">
-            <!-- Inner Voice -->
-            <div class="p-4 rounded-lg bg-[var(--vibe-bg-main)] border border-[var(--vibe-border)]">
-              <h4 class="font-bold text-sm uppercase text-[var(--vibe-accent)]/80">{{ wf.t('check.remix_modal.field_inner_voice') }}</h4>
-              <p class="mt-1 text-sm text-[var(--text-primary)] font-serif">{{ remixData()!.inner_voice }}</p>
-            </div>
-            <!-- Core Wound -->
-            <div class="p-4 rounded-lg bg-[var(--vibe-bg-main)] border border-[var(--vibe-border)]">
-              <h4 class="font-bold text-sm uppercase text-[var(--vibe-accent)]/80">{{ wf.t('check.remix_modal.field_core_wound') }}</h4>
-              <p class="mt-1 text-sm text-[var(--text-primary)] font-serif">{{ remixData()!.core_wound }}</p>
-            </div>
-            <!-- Secret Desire -->
-            <div class="p-4 rounded-lg bg-[var(--vibe-bg-main)] border border-[var(--vibe-border)]">
-              <h4 class="font-bold text-sm uppercase text-[var(--vibe-accent)]/80">{{ wf.t('check.remix_modal.field_secret_desire') }}</h4>
-              <p class="mt-1 text-sm text-[var(--text-primary)] font-serif">{{ remixData()!.secret_desire }}</p>
-            </div>
-            <!-- Worldview -->
-            <div class="p-4 rounded-lg bg-[var(--vibe-bg-main)] border border-[var(--vibe-border)]">
-              <h4 class="font-bold text-sm uppercase text-[var(--vibe-accent)]/80">{{ wf.t('check.remix_modal.field_worldview') }}</h4>
-              <p class="mt-1 text-sm text-[var(--text-primary)] font-serif">{{ remixData()!.worldview }}</p>
-            </div>
+             <!-- Selectable Traits -->
+             @for (key of remixKeys; track key) {
+                <label class="block p-4 rounded-lg border border-[var(--vibe-border)] cursor-pointer transition-all hover:bg-[var(--vibe-bg-main)]"
+                       [class.bg-[var(--vibe-bg-main)]]="remixSelection()[key]"
+                       [class.border-[var(--vibe-accent)]]="remixSelection()[key]">
+                  <div class="flex items-start gap-3">
+                     <div class="pt-0.5">
+                       <input type="checkbox" [checked]="remixSelection()[key]" (change)="toggleRemix(key)" 
+                              class="w-5 h-5 rounded border-gray-300 text-[var(--vibe-accent)] focus:ring-[var(--vibe-accent)]">
+                     </div>
+                     <div>
+                        <h4 class="font-bold text-sm uppercase text-[var(--vibe-accent)]/80">{{ wf.t('check.remix_modal.field_' + key) }}</h4>
+                        <p class="mt-1 text-sm text-[var(--text-primary)] font-serif">{{ remixData()![key] }}</p>
+                     </div>
+                  </div>
+                </label>
+             }
           </div>
-          <div class="p-4 bg-[var(--vibe-bg-header)] flex justify-end gap-3">
-            <button (click)="showRemixModal.set(false)" class="px-6 py-2 rounded-full text-sm font-bold text-[var(--vibe-accent)] hover:bg-black/10">{{ wf.t('common.close') }}</button>
-            <button (click)="acceptRemix()" class="px-6 py-2 rounded-full text-sm font-bold bg-[var(--vibe-accent-bg)] text-[var(--vibe-on-accent)] hover:opacity-90">{{ wf.t('check.remix_modal.accept') }}</button>
+          
+          <div class="p-4 bg-[var(--vibe-bg-header)] flex justify-between items-center gap-3">
+             <div class="text-xs text-[var(--text-secondary)] pl-2">
+                 {{ selectedCount() }} selected
+             </div>
+             <div class="flex gap-3">
+                <button (click)="showRemixModal.set(false)" class="px-6 py-2 rounded-full text-sm font-bold text-[var(--vibe-accent)] hover:bg-black/10">{{ wf.t('common.close') }}</button>
+                <button (click)="acceptRemix()" [disabled]="selectedCount() === 0" class="px-6 py-2 rounded-full text-sm font-bold bg-[var(--vibe-accent-bg)] text-[var(--vibe-on-accent)] hover:opacity-90 disabled:opacity-50">{{ wf.t('check.remix_modal.accept') }}</button>
+             </div>
           </div>
         </div>
       </div>
@@ -193,6 +197,19 @@ export class CheckComponent implements OnInit {
   
   showRemixModal = signal(false);
   remixData = signal<RemixData | null>(null);
+  
+  // Remix Selection State
+  remixKeys: (keyof RemixData)[] = ['inner_voice', 'core_wound', 'secret_desire', 'worldview'];
+  remixSelection = signal<Record<keyof RemixData, boolean>>({
+      inner_voice: true,
+      core_wound: true,
+      secret_desire: true,
+      worldview: true
+  });
+  
+  selectedCount = computed(() => {
+     return Object.values(this.remixSelection()).filter(Boolean).length;
+  });
 
   async ngOnInit() {
     if (!this.wf.state().analysisReport) {
@@ -208,7 +225,8 @@ export class CheckComponent implements OnInit {
     try {
       const persona = this.wf.state().structuredPersona;
       if (persona) {
-          const result = await this.gemini.analyzeConflicts(persona);
+          // Pass current language to ensure output matches UI
+          const result = await this.gemini.analyzeConflicts(persona, this.wf.currentLang());
           this.conflicts.set(result);
           this.wf.pushState({ analysisReport: result });
       }
@@ -269,8 +287,18 @@ export class CheckComponent implements OnInit {
         return;
     }
     try {
-        const result = await this.gemini.remixPersona(persona);
+        // Pass language to ensure remix content is in target language
+        const result = await this.gemini.remixPersona(persona, this.wf.currentLang());
         this.remixData.set(result);
+        
+        // Reset selection to all true by default
+        this.remixSelection.set({
+          inner_voice: true,
+          core_wound: true,
+          secret_desire: true,
+          worldview: true
+        });
+        
         this.showRemixModal.set(true);
     } catch (e) {
         console.error("Remix failed", e);
@@ -280,17 +308,32 @@ export class CheckComponent implements OnInit {
     }
   }
   
+  toggleRemix(key: keyof RemixData) {
+      this.remixSelection.update(s => ({ ...s, [key]: !s[key] }));
+  }
+  
   acceptRemix() {
     const persona = this.wf.state().structuredPersona;
     const remix = this.remixData();
+    const selection = this.remixSelection();
+    
     if (!persona || !remix) return;
 
-    const remixedPersona = { ...persona, ...remix };
+    // Only merge selected keys
+    const finalRemix: Partial<RemixData> = {};
+    if (selection.inner_voice) finalRemix.inner_voice = remix.inner_voice;
+    if (selection.core_wound) finalRemix.core_wound = remix.core_wound;
+    if (selection.secret_desire) finalRemix.secret_desire = remix.secret_desire;
+    if (selection.worldview) finalRemix.worldview = remix.worldview;
+
+    // We cast to any to allow merging partial remix data into structured persona for display/prompt gen
+    // Ideally, we should have a more flexible type, but this works for the prompt generator
+    const remixedPersona = { ...persona, ...finalRemix } as any; 
     const newDraft = this.gemini.compileStructuredPrompt(remixedPersona);
 
     this.wf.pushState({
         structuredPersona: remixedPersona,
-        remixData: remix,
+        remixData: remix, // Store full remix data for reference, or maybe just selected? Keeping full is fine.
         currentDraft: newDraft
     });
     this.showRemixModal.set(false);
