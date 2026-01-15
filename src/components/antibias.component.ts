@@ -24,7 +24,10 @@ import { Chat } from '@google/genai';
             <p class="text-xs text-[var(--antibias-accent)] font-bold">{{ wf.t('antibias.subtitle') }}</p>
           </div>
         </div>
-        <button (click)="close.emit()" class="p-2 hover:bg-black/10 transition-colors rounded-lg">
+        <button (click)="close.emit()" class="p-2 hover:bg-black/10 transition-colors rounded-lg flex items-center gap-1">
+          @if (hasContext()) {
+             <span class="text-xs font-bold uppercase mr-1">{{ wf.t('common.back') }}</span>
+          }
           <app-icon name="close" [size]="24"></app-icon>
         </button>
       </div>
@@ -49,7 +52,7 @@ import { Chat } from '@google/genai';
                 </div>
 
                 <!-- Bubble -->
-                <div class="p-4 text-sm leading-relaxed border shadow-sm rounded-xl"
+                <div class="p-4 text-sm leading-relaxed border shadow-sm rounded-xl whitespace-pre-wrap"
                      [class.bg-[var(--antibias-bg-card)]]="msg.role === 'model'"
                      [class.border-[var(--antibias-border)]]="msg.role === 'model'"
                      [class.text-[var(--text-primary)]]="msg.role === 'model'"
@@ -159,6 +162,7 @@ export class AntiBiasComponent implements OnInit, AfterViewChecked {
   userInput = '';
   isProcessing = signal(false);
   showScrollButton = signal(false);
+  hasContext = signal(false);
   
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
 
@@ -186,10 +190,23 @@ export class AntiBiasComponent implements OnInit, AfterViewChecked {
 
   async startSession() {
     this.isProcessing.set(true);
-    this.chatSession = this.gemini.startAntiBiasChat(this.wf.currentLang());
+    
+    // CHECK FOR CONTEXT FROM WORKFLOW
+    const context = this.wf.antiBiasContext();
+    if (context) {
+        this.hasContext.set(true);
+    }
+
+    this.chatSession = this.gemini.startAntiBiasChat(this.wf.currentLang(), context || undefined);
+    
+    // Clear the context from service so it doesn't persist if they come back later manually
+    // Actually, keeping it might be okay, but let's clear it on exit usually.
+    // For now, we leave it in the service until explicit exit or new set.
     
     try {
-      const response = await this.chatSession.sendMessage({ message: this.wf.t('antibias.init_prompt') });
+      const initMsg = context ? 'Protocol Started with Context.' : this.wf.t('antibias.init_prompt');
+      const response = await this.chatSession.sendMessage({ message: initMsg });
+      
       const sdkChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
       const groundingChunks: GroundingChunk[] = sdkChunks
              .filter(c => c.web?.uri)

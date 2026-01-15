@@ -1,8 +1,8 @@
 
-import { Component, inject, signal, OnInit, computed, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, inject, signal, OnInit, computed, ViewChild, ElementRef, AfterViewChecked, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { WorkflowService, ConflictItem, RemixData } from '../../services/workflow.service';
+import { WorkflowService, LogicConflict, RemixData, ReferenceStandard, FullAnalysisReport, DepthElement } from '../../services/workflow.service';
 import { GeminiService } from '../../services/gemini.service';
 import { IconComponent } from '../ui/icon.component';
 import { LoadingOverlayComponent } from '../ui/loading-overlay.component';
@@ -26,82 +26,193 @@ import { LoadingOverlayComponent } from '../ui/loading-overlay.component';
 
       <!-- Content Area -->
       <div class="flex-1 overflow-y-auto scroll-smooth" #scrollContainer (scroll)="onScroll()">
-        <div class="p-4 md:p-6 max-w-3xl mx-auto space-y-6 animate-fadeIn pb-10">
+        <div class="p-4 md:p-6 max-w-4xl mx-auto space-y-8 animate-fadeIn pb-20">
           
-          <!-- Loading State (Replaced by overlay, keeping a simple spacer if needed) -->
           @if (isAnalyzing()) {
              <div class="h-64"></div>
           }
 
-          <!-- Results State -->
           @if (!isAnalyzing()) {
-            <!-- Status Header -->
-            <div class="p-6 rounded-2xl border flex items-center gap-4 transition-colors"
-                 [class.bg-[#eafdf0]]="conflictCount() === 0" [class.dark:bg-[#152b1e]]="conflictCount() === 0"
-                 [class.border-[#b7f3cb]]="conflictCount() === 0" [class.dark:border-[#42604f]]="conflictCount() === 0"
-                 [class.bg-[#fff8e1]]="conflictCount() > 0" [class.dark:bg-[#2e260e]]="conflictCount() > 0"
-                 [class.border-[#ffe082]]="conflictCount() > 0" [class.dark:border-[#6b5b27]]="conflictCount() > 0">
+            
+            <!-- SECTION 1: LOGIC CHECK -->
+            <div class="space-y-4">
+               <h3 class="text-lg font-bold text-[var(--vibe-accent)] flex items-center gap-2 uppercase tracking-wide opacity-80">
+                  <app-icon name="psychology_alt" [size]="20"></app-icon>
+                  {{ wf.t('check.logic_title') }}
+               </h3>
                
-               <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
-                    [class.bg-[#c4eed0]]="conflictCount() === 0" [class.dark:bg-[#2b4737]]="conflictCount() === 0"
-                    [class.text-[#146c2e]]="conflictCount() === 0" [class.dark:text-[#a2e0b9]]="conflictCount() === 0"
-                    [class.bg-[#ffecb3]]="conflictCount() > 0" [class.dark:bg-[#4a3f1a]]="conflictCount() > 0"
-                    [class.text-[#ff6f00]]="conflictCount() > 0" [class.dark:text-[#f7d189]]="conflictCount() > 0">
-                  <app-icon [name]="conflictCount() === 0 ? 'check_circle' : 'warning'" [size]="28"></app-icon>
+               @if (report()?.logical_conflicts?.length === 0) {
+                  <div class="p-6 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 flex items-center gap-3 text-green-800 dark:text-green-200">
+                     <app-icon name="check_circle" [size]="24"></app-icon>
+                     <span class="font-bold">{{ wf.t('check.good') }}</span>
+                  </div>
+               } @else {
+                  <div class="grid gap-4">
+                    @for (conflict of report()?.logical_conflicts; track $index) {
+                       <div class="bg-[var(--vibe-bg-card)] rounded-xl border shadow-sm overflow-hidden animate-slideUp relative"
+                            [ngClass]="{
+                              'border-red-400': conflict.severity === 'high',
+                              'border-yellow-400': conflict.severity === 'medium',
+                              'border-[var(--vibe-border)]': conflict.severity === 'low'
+                            }">
+                          
+                          <div class="p-4 flex gap-4">
+                             <!-- Severity Icon -->
+                             <div class="mt-1 shrink-0">
+                                @if (conflict.severity === 'high') {
+                                   <app-icon name="error" [size]="24" class="text-red-500"></app-icon>
+                                } @else if (conflict.severity === 'medium') {
+                                   <app-icon name="warning" [size]="24" class="text-yellow-500"></app-icon>
+                                } @else {
+                                   <app-icon name="info" [size]="24" class="text-blue-400"></app-icon>
+                                }
+                             </div>
+                             
+                             <div class="space-y-2 flex-1">
+                                <h4 class="font-bold text-[var(--text-primary)] text-sm flex items-center gap-2">
+                                   {{ conflict.type }}
+                                   @if (conflict.severity === 'high') {
+                                      <span class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold uppercase">Critical</span>
+                                   }
+                                </h4>
+                                <p class="text-sm text-[var(--text-secondary)]">{{ conflict.detail }}</p>
+                                
+                                <div class="bg-[var(--vibe-bg-header)]/30 p-3 rounded-lg text-xs flex gap-2">
+                                   <app-icon name="lightbulb" [size]="16" class="text-[var(--vibe-accent)] shrink-0"></app-icon>
+                                   <span class="text-[var(--text-secondary)] italic">{{ conflict.suggestion }}</span>
+                                </div>
+                             </div>
+                          </div>
+
+                          <!-- Actions -->
+                          <div class="px-4 py-2 border-t bg-[var(--vibe-bg-header)]/10 flex justify-end gap-2" 
+                               [ngClass]="{
+                                 'border-red-200': conflict.severity === 'high',
+                                 'border-[var(--vibe-border)]': conflict.severity !== 'high'
+                               }">
+                             <button (click)="ignoreConflict($index)" class="px-3 py-1.5 rounded-lg text-xs font-bold text-[var(--text-secondary)] hover:bg-black/5">
+                                {{ wf.t('check.btn_ignore') }}
+                             </button>
+                             @if (conflict.severity === 'high' || conflict.severity === 'medium') {
+                               <button (click)="autoFix($index)" [disabled]="isProcessingAction($index)"
+                                       class="px-3 py-1.5 rounded-lg text-xs font-bold bg-[var(--vibe-accent-bg)] text-[var(--vibe-on-accent)] hover:opacity-90 shadow-sm flex items-center gap-1 disabled:opacity-50">
+                                  @if (isFixing() === $index) { <span class="animate-spin">↻</span> }
+                                  {{ wf.t('check.btn_fix') }}
+                               </button>
+                             } @else {
+                               <button (click)="turnIntoFeature($index)" [disabled]="isProcessingAction($index)"
+                                       class="px-3 py-1.5 rounded-lg text-xs font-bold border border-[var(--vibe-accent)] text-[var(--vibe-accent)] hover:bg-[var(--vibe-accent-bg)] hover:text-[var(--vibe-on-accent)] transition-colors flex items-center gap-1">
+                                  @if (isHarmonizing() === $index) { <span class="animate-spin">↻</span> }
+                                  {{ wf.t('check.btn_feature') }}
+                               </button>
+                             }
+                          </div>
+                       </div>
+                    }
+                  </div>
+               }
+            </div>
+
+            <!-- SECTION 2: BIAS DETECTION -->
+            <div class="space-y-4">
+               <h3 class="text-lg font-bold text-[var(--vibe-accent)] flex items-center gap-2 uppercase tracking-wide opacity-80">
+                  <app-icon name="policy" [size]="20"></app-icon>
+                  {{ wf.t('check.bias_title') }}
+               </h3>
+               
+               @if (!report()?.bias_analysis?.bias_detected) {
+                  <div class="p-4 rounded-xl border border-[var(--vibe-border)] text-[var(--text-secondary)] text-sm italic flex items-center gap-2 opacity-70">
+                     <app-icon name="verified_user" [size]="18"></app-icon>
+                     {{ wf.t('check.bias_none') }}
+                  </div>
+               } @else {
+                  <div class="p-5 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 animate-fadeIn">
+                     <div class="flex items-center gap-2 text-purple-800 dark:text-purple-300 font-bold mb-2">
+                        <app-icon name="auto_awesome" [size]="20"></app-icon>
+                        {{ wf.t('check.bias_detected') }}: {{ report()?.bias_analysis?.bias_type }}
+                     </div>
+                     <p class="text-sm text-[var(--text-primary)] mb-3">{{ report()?.bias_analysis?.evidence }}</p>
+                     <div class="bg-white/60 dark:bg-black/20 p-3 rounded-lg text-sm text-purple-900 dark:text-purple-100 font-serif italic mb-4">
+                        "{{ report()?.bias_analysis?.gentle_suggestion }}"
+                     </div>
+                     <!-- DEEP AUDIT BUTTON -->
+                     <div class="flex justify-end">
+                        <button (click)="openAntiBiasAudit()" class="px-4 py-2 rounded-lg bg-purple-200 dark:bg-purple-800 text-purple-900 dark:text-purple-100 text-xs font-bold hover:brightness-110 transition-all flex items-center gap-2 shadow-sm">
+                           <app-icon name="hub" [size]="16"></app-icon>
+                           {{ wf.t('check.btn_antibias_audit') }}
+                        </button>
+                     </div>
+                  </div>
+               }
+            </div>
+
+            <!-- SECTION 3: DEPTH ASSESSMENT -->
+            <div class="space-y-4">
+               <h3 class="text-lg font-bold text-[var(--vibe-accent)] flex items-center gap-2 uppercase tracking-wide opacity-80">
+                  <app-icon name="layers" [size]="20"></app-icon>
+                  {{ wf.t('check.depth_title') }}
+               </h3>
+               
+               <!-- Score Bar -->
+               <div class="flex items-center gap-4 p-4 rounded-xl bg-[var(--vibe-bg-card)] border border-[var(--vibe-border)]">
+                  <div class="flex-1">
+                     <div class="flex justify-between mb-1 text-xs font-bold uppercase text-[var(--text-secondary)]">
+                        <span>{{ wf.t('check.depth_score') }}</span>
+                        <span>{{ report()?.depth_assessment?.completeness_score }}%</span>
+                     </div>
+                     <div class="h-2 bg-[var(--vibe-bg-header)] rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-[var(--vibe-accent)] to-purple-500 transition-all duration-1000"
+                             [style.width.%]="report()?.depth_assessment?.completeness_score || 0"></div>
+                     </div>
+                  </div>
                </div>
-               
-               <div>
-                 <h3 class="font-bold text-lg text-black dark:text-white">
-                   {{ conflictCount() === 0 ? wf.t('check.good') : wf.t('check.issues') }}
-                 </h3>
-                 <p class="text-sm opacity-80 text-black dark:text-gray-300">
-                   {{ wf.t('check.items_found', { count: conflictCount() }) }}
-                 </p>
+
+               <!-- Missing Elements Cards -->
+               @if (report()?.depth_assessment?.missing_elements?.length) {
+                  <h4 class="text-xs font-bold uppercase text-[var(--text-secondary)] mt-2">{{ wf.t('check.missing_elements') }}</h4>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     @for (item of report()?.depth_assessment?.missing_elements; track $index) {
+                        <div class="p-4 rounded-xl border border-[var(--vibe-border)] bg-[var(--vibe-bg-card)] flex flex-col justify-between hover:shadow-md transition-all">
+                           <div>
+                              <div class="text-[10px] font-bold uppercase text-[var(--vibe-accent)] tracking-wider mb-1">{{ item.element }}</div>
+                              <h5 class="font-bold text-[var(--text-primary)] text-sm mb-2">{{ item.question }}</h5>
+                              <p class="text-xs text-[var(--text-secondary)] opacity-80 mb-4">{{ item.why_important }}</p>
+                           </div>
+                           <div class="flex justify-end gap-2">
+                              <button (click)="skipDepthElement($index)" class="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] px-2 py-1">
+                                 {{ wf.t('check.btn_skip_depth') }}
+                              </button>
+                              <button (click)="addDepthElement(item, $index)" [disabled]="isBrainstorming() === $index"
+                                      class="text-xs bg-[var(--vibe-bg-header)] hover:bg-[var(--vibe-accent-bg)] hover:text-[var(--vibe-on-accent)] px-3 py-1.5 rounded-full font-bold transition-colors flex items-center gap-1 disabled:opacity-50">
+                                 @if (isBrainstorming() === $index) { <span class="animate-spin">↻</span> }
+                                 @else { <app-icon name="add" [size]="14"></app-icon> }
+                                 {{ wf.t('check.btn_add_depth') }}
+                              </button>
+                           </div>
+                        </div>
+                     }
+                  </div>
+               }
+            </div>
+
+            <!-- Reference Standards (Kept at bottom) -->
+            <div class="pt-8 border-t border-[var(--vibe-border)]">
+               <div class="flex justify-between items-center mb-4">
+                  <div>
+                     <h3 class="text-sm font-bold text-[var(--vibe-accent)] uppercase tracking-wider">{{ wf.t('check.standards_title') }}</h3>
+                     <p class="text-xs text-[var(--text-secondary)]">{{ wf.t('check.standards_desc') }}</p>
+                  </div>
+               </div>
+               <div class="flex flex-wrap gap-3">
+                  @for(std of standards(); track std.id) {
+                     <button (click)="openStandard(std)" class="px-4 py-2 rounded-lg border border-[var(--vibe-border)] bg-[var(--vibe-bg-card)] hover:bg-[var(--vibe-bg-header)] transition-colors text-xs font-bold flex items-center gap-2 text-[var(--text-secondary)]">
+                        <app-icon [name]="std.type === 'engineering' ? 'precision_manufacturing' : 'psychology'" [size]="16"></app-icon>
+                        {{ std.title }}
+                     </button>
+                  }
                </div>
             </div>
 
-            <!-- Conflict Cards List -->
-            @if (conflicts().length > 0) {
-               <div class="space-y-4">
-                 @for (conflict of conflicts(); track $index) {
-                   <div class="bg-[var(--vibe-bg-card)] rounded-xl border border-[#ffe082] dark:border-[#6b5b27] shadow-sm overflow-hidden animate-slideUp" [style.animation-delay]="$index * 100 + 'ms'">
-                      <div class="p-4 border-b border-[#ffe082] dark:border-[#6b5b27] bg-[#fffbf0] dark:bg-[#2e260e] flex items-center gap-2">
-                         <app-icon name="warning" [size]="24" class="text-orange-600 dark:text-orange-400"></app-icon>
-                         <div class="font-bold text-[#5d4037] dark:text-yellow-200 flex items-center gap-2 flex-wrap">
-                            @for (card of conflict.cards; track card; let isLast = $last) {
-                               <span class="px-2 py-0.5 bg-white dark:bg-[#4a3f1a] border border-[#ffe082] dark:border-[#6b5b27] rounded text-xs uppercase">{{card}}</span>
-                               @if (!isLast) { <app-icon name="compare_arrows" [size]="16" class="text-gray-400"></app-icon> }
-                            }
-                         </div>
-                         <span class="ml-auto text-xs font-bold px-2 py-1 rounded bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 uppercase">{{conflict.severity}}</span>
-                      </div>
-                      <div class="p-4 space-y-3">
-                         <p class="text-[#3e2723] dark:text-gray-200 text-sm leading-relaxed"><strong class="text-[#bf360c] dark:text-orange-400">{{ wf.t('check.issue_label') }}</strong> {{ conflict.description }}</p>
-                         <p class="text-[#33691e] dark:text-green-200 text-sm bg-[#f1f8e9] dark:bg-green-900/30 p-3 rounded-lg"><strong class="text-[#33691e] dark:text-green-300">{{ wf.t('check.suggestion_label') }}</strong> {{ conflict.suggestion }}</p>
-                      </div>
-                      <div class="p-3 bg-black/5 border-t border-[#ffe082] dark:border-[#6b5b27] flex flex-wrap justify-end gap-2">
-                         <button (click)="ignoreConflict($index)" class="px-4 py-1.5 rounded-lg text-sm text-[#5d4037] dark:text-yellow-200 hover:bg-[#ffe082]/20 dark:hover:bg-white/10 font-medium">
-                           {{ wf.t('check.btn_ignore') }}
-                         </button>
-                         
-                         <button (click)="turnIntoFeature($index)" [disabled]="isProcessingAction($index)"
-                                 class="px-4 py-1.5 rounded-lg text-sm bg-[#b2dfdb] text-[#004d40] font-bold hover:bg-[#80cbc4] shadow-sm flex items-center gap-2 disabled:opacity-50 dark:bg-teal-800 dark:text-teal-100 dark:hover:bg-teal-700">
-                            @if (isHarmonizing() === $index) { <span class="animate-spin text-xs">↻</span> }
-                            @else { <app-icon name="auto_awesome" [size]="16"></app-icon> }
-                            {{ wf.t('check.btn_feature') }}
-                         </button>
-
-                         <button (click)="autoFix($index)" [disabled]="isProcessingAction($index)"
-                                 class="px-4 py-1.5 rounded-lg text-sm bg-[#ffb74d] text-[#3e2723] font-bold hover:bg-[#ffa726] shadow-sm flex items-center gap-2 disabled:opacity-50 dark:bg-orange-600 dark:text-black dark:hover:bg-orange-500">
-                            @if (isFixing() === $index) { <span class="animate-spin text-xs">↻</span> }
-                            @else { <app-icon name="auto_fix" [size]="16"></app-icon> }
-                            {{ wf.t('check.btn_fix') }}
-                         </button>
-                      </div>
-                   </div>
-                 }
-               </div>
-            }
           }
         </div>
       </div>
@@ -138,6 +249,45 @@ import { LoadingOverlayComponent } from '../ui/loading-overlay.component';
       </div>
     </div>
 
+    <!-- Modals (Remix & Standard) -->
+    <!-- Reference Standard Modal -->
+    @if (activeStandard(); as std) {
+       <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fadeIn" (click)="closeStandard()">
+          <div class="bg-[var(--vibe-bg-card)] w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-[var(--vibe-border)] animate-slideUp max-h-[90vh]" (click)="$event.stopPropagation()">
+             <div class="p-6 border-b border-[var(--vibe-border)] flex justify-between items-start">
+                <div>
+                   <h3 class="text-xl font-bold text-[var(--text-primary)]">{{ std.title }}</h3>
+                   <p class="text-sm opacity-70 mt-1 font-serif">{{ std.description }}</p>
+                </div>
+                <button (click)="closeStandard()" class="p-2 rounded-full hover:bg-black/10 text-[var(--text-secondary)]">
+                   <app-icon name="close" [size]="24"></app-icon>
+                </button>
+             </div>
+             <div class="flex-1 overflow-y-auto p-6 bg-[var(--vibe-bg-input)]">
+                @if (comparisonResult()) {
+                   <div class="mb-6 p-4 rounded-xl bg-[var(--vibe-bg-header)] border border-[var(--vibe-border)] animate-fadeIn">
+                      <h4 class="font-bold text-[var(--vibe-accent)] mb-2 flex items-center gap-2">
+                         <app-icon name="analytics" [size]="20"></app-icon> {{ wf.t('check.comparison_title') }}
+                      </h4>
+                      <pre class="whitespace-pre-wrap text-sm text-[var(--text-primary)] font-serif">{{ comparisonResult() }}</pre>
+                   </div>
+                }
+                <h4 class="font-bold text-xs uppercase tracking-wider text-[var(--text-secondary)] mb-2">Standard Content (Read-Only)</h4>
+                <div class="p-4 rounded-xl border border-[var(--vibe-border)] bg-[var(--vibe-bg-card)] relative">
+                   <pre class="whitespace-pre-wrap text-sm font-mono text-[var(--text-primary)] overflow-x-auto">{{ std.content }}</pre>
+                </div>
+             </div>
+             <div class="p-4 border-t border-[var(--vibe-border)] flex justify-end gap-3 bg-[var(--vibe-bg-card)]">
+                <button (click)="closeStandard()" class="px-4 py-2 rounded-full text-sm font-bold text-[var(--text-secondary)] hover:bg-black/5">{{ wf.t('common.close') }}</button>
+                <button (click)="compareWith(std)" [disabled]="isComparing()" class="px-6 py-2 rounded-full text-sm font-bold bg-[var(--vibe-accent-bg)] text-[var(--vibe-on-accent)] hover:opacity-90 disabled:opacity-50 flex items-center gap-2">
+                   @if(isComparing()) { <span class="animate-spin text-xs">↻</span> }
+                   {{ wf.t('check.btn_compare') }}
+                </button>
+             </div>
+          </div>
+       </div>
+    }
+
     <!-- Remix Result Modal -->
     @if (showRemixModal() && remixData()) {
       <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fadeIn" (click)="showRemixModal.set(false)">
@@ -146,9 +296,7 @@ import { LoadingOverlayComponent } from '../ui/loading-overlay.component';
             <h3 class="text-2xl font-bold text-[var(--vibe-accent)]">{{ wf.t('check.remix_modal.title') }}</h3>
             <p class="text-sm text-[var(--text-secondary)] mt-1">{{ wf.t('check.remix_modal.desc') }}</p>
           </div>
-          
           <div class="p-6 space-y-4 overflow-y-auto max-h-[60vh]">
-             <!-- Selectable Traits -->
              @for (key of remixKeys; track key) {
                 <label class="block p-4 rounded-lg border border-[var(--vibe-border)] cursor-pointer transition-all hover:bg-[var(--vibe-bg-main)]"
                        [class.bg-[var(--vibe-bg-main)]]="remixSelection()[key]"
@@ -166,7 +314,6 @@ import { LoadingOverlayComponent } from '../ui/loading-overlay.component';
                 </label>
              }
           </div>
-          
           <div class="p-4 bg-[var(--vibe-bg-header)] flex justify-between items-center gap-3">
              <div class="text-xs text-[var(--text-secondary)] pl-2">
                  {{ selectedCount() }} selected
@@ -208,15 +355,24 @@ import { LoadingOverlayComponent } from '../ui/loading-overlay.component';
 export class CheckComponent implements OnInit, AfterViewChecked {
   wf = inject(WorkflowService);
   private gemini = inject(GeminiService);
+  switchToAntiBias = output<void>(); // NEW OUTPUT
   
   isAnalyzing = signal(true);
-  conflicts = signal<ConflictItem[]>([]);
-  conflictCount = computed(() => this.conflicts().length);
+  
+  // New Report State
+  report = computed(() => this.wf.state().analysisReport);
   
   isFixing = signal<number | null>(null);
   isHarmonizing = signal<number | null>(null);
+  isBrainstorming = signal<number | null>(null);
   isRemixing = signal(false);
   
+  // Reference Standards State
+  standards = computed(() => this.wf.referenceStandards());
+  activeStandard = signal<ReferenceStandard | null>(null);
+  isComparing = signal(false);
+  comparisonResult = signal('');
+
   showRemixModal = signal(false);
   remixData = signal<RemixData | null>(null);
   
@@ -230,10 +386,10 @@ export class CheckComponent implements OnInit, AfterViewChecked {
   });
   
   analysisSteps = [
-    'Scanning for Contradictions...',
-    'Analyzing Psychological Depth...',
-    'Detecting Logic Flaws...',
-    'Generating Report...'
+    'Scanning Logic Vectors...',
+    'Detecting Bias Patterns...',
+    'Measuring Character Depth...',
+    'Generating 3-Layer Report...'
   ];
 
   remixSteps = [
@@ -254,7 +410,6 @@ export class CheckComponent implements OnInit, AfterViewChecked {
     if (!this.wf.state().analysisReport) {
        await this.runAnalysis();
     } else {
-       this.conflicts.set(this.wf.state().analysisReport!);
        this.isAnalyzing.set(false);
     }
   }
@@ -280,14 +435,12 @@ export class CheckComponent implements OnInit, AfterViewChecked {
     try {
       const persona = this.wf.state().structuredPersona;
       if (persona) {
-          // Pass current language to ensure output matches UI
-          const result = await this.gemini.analyzeConflicts(persona, this.wf.currentLang());
-          this.conflicts.set(result);
+          // New Deep Analysis
+          const result = await this.gemini.analyzePersonaDeeply(persona, this.wf.currentLang());
           this.wf.pushState({ analysisReport: result });
       }
     } catch (e) {
       console.error(e);
-      this.conflicts.set([]);
     } finally {
       this.isAnalyzing.set(false);
     }
@@ -299,39 +452,129 @@ export class CheckComponent implements OnInit, AfterViewChecked {
 
   async autoFix(index: number) {
     this.isFixing.set(index);
-    await this.processResolution(index, (persona, conflict) => 
-        this.gemini.autoFixConflict(persona, conflict.description, conflict.suggestion));
+    const conflicts = this.report()?.logical_conflicts || [];
+    const conflict = conflicts[index];
+    
+    if (!conflict) return;
+
+    await this.processResolution(index, (persona, conf) => 
+        this.gemini.autoFixConflict(persona, conf.detail, conf.suggestion));
     this.isFixing.set(null);
   }
 
   async turnIntoFeature(index: number) {
     this.isHarmonizing.set(index);
-    await this.processResolution(index, (persona, conflict) => 
-        this.gemini.harmonizeConflict(persona, conflict.description));
+    const conflicts = this.report()?.logical_conflicts || [];
+    const conflict = conflicts[index];
+    
+    if (!conflict) return;
+
+    await this.processResolution(index, (persona, conf) => 
+        this.gemini.harmonizeConflict(persona, conf.detail));
     this.isHarmonizing.set(null);
   }
 
   private async processResolution(index: number, action: (p: any, c: any) => Promise<any>) {
-    const conflict = this.conflicts()[index];
     const currentPersona = this.wf.state().structuredPersona;
-    if (!currentPersona) return;
+    const currentReport = this.report();
+    const conflict = currentReport?.logical_conflicts[index];
+
+    if (!currentPersona || !currentReport || !conflict) return;
+    
     try {
       const updatedPersona = await action(currentPersona, conflict);
       const newDraft = this.gemini.compileStructuredPrompt(updatedPersona);
+      
+      // Update State
       this.wf.pushState({
         structuredPersona: updatedPersona,
         currentDraft: newDraft
       });
-      this.conflicts.update(list => list.filter((_, i) => i !== index));
-      this.wf.pushState({ analysisReport: this.conflicts() });
+      
+      // Remove resolved conflict from local report state
+      const updatedConflicts = currentReport.logical_conflicts.filter((_, i) => i !== index);
+      this.wf.pushState({ 
+          analysisReport: { ...currentReport, logical_conflicts: updatedConflicts } 
+      });
+
     } catch (e) {
       alert(this.wf.t('check.error.action_failed'));
     }
   }
 
   ignoreConflict(index: number) {
-    this.conflicts.update(list => list.filter((_, i) => i !== index));
-    this.wf.pushState({ analysisReport: this.conflicts() });
+    const currentReport = this.report();
+    if (!currentReport) return;
+    const updatedConflicts = currentReport.logical_conflicts.filter((_, i) => i !== index);
+    this.wf.pushState({ 
+        analysisReport: { ...currentReport, logical_conflicts: updatedConflicts } 
+    });
+  }
+
+  // --- Depth Methods ---
+  skipDepthElement(index: number) {
+      const currentReport = this.report();
+      if (!currentReport) return;
+      const updatedElements = currentReport.depth_assessment.missing_elements.filter((_, i) => i !== index);
+      this.wf.pushState({ 
+          analysisReport: { ...currentReport, depth_assessment: { ...currentReport.depth_assessment, missing_elements: updatedElements } } 
+      });
+  }
+
+  async addDepthElement(item: DepthElement, index: number) {
+      this.isBrainstorming.set(index);
+      const currentPersona = this.wf.state().structuredPersona;
+      if (!currentPersona) return;
+
+      try {
+          const generatedContent = await this.gemini.brainstormElement(currentPersona, item.question, this.wf.currentLang());
+          
+          // Append to personality or backstory roughly? 
+          // For simplicity, we append to 'Personality' with a newline
+          const updatedPersona = { 
+              ...currentPersona, 
+              personality: currentPersona.personality + `\n\n[Depth: ${item.element}]\n${generatedContent}` 
+          };
+          const newDraft = this.gemini.compileStructuredPrompt(updatedPersona);
+
+          this.wf.pushState({
+            structuredPersona: updatedPersona,
+            currentDraft: newDraft
+          });
+          
+          this.skipDepthElement(index); // Remove from list
+      } catch(e) {
+          console.error(e);
+          alert(this.wf.t('check.error.action_failed'));
+      } finally {
+          this.isBrainstorming.set(null);
+      }
+  }
+
+  // --- Reference Standards Methods ---
+  openStandard(std: ReferenceStandard) {
+     this.activeStandard.set(std);
+     this.comparisonResult.set('');
+  }
+
+  closeStandard() {
+     this.activeStandard.set(null);
+     this.isComparing.set(false);
+  }
+
+  async compareWith(std: ReferenceStandard) {
+     const currentDraft = this.wf.state().currentDraft;
+     if (!currentDraft) return;
+     
+     this.isComparing.set(true);
+     try {
+        const result = await this.gemini.compareWithStandard(currentDraft, std, this.wf.currentLang());
+        this.comparisonResult.set(result);
+     } catch (e) {
+        this.comparisonResult.set('[Error] Analysis failed.');
+     } finally {
+        this.isComparing.set(false);
+     }
   }
 
   async triggerRemix() {
@@ -381,8 +624,6 @@ export class CheckComponent implements OnInit, AfterViewChecked {
     if (selection.secret_desire) finalRemix.secret_desire = remix.secret_desire;
     if (selection.worldview) finalRemix.worldview = remix.worldview;
 
-    // We cast to any to allow merging partial remix data into structured persona for display/prompt gen
-    // Ideally, we should have a more flexible type, but this works for the prompt generator
     const remixedPersona = { ...persona, ...finalRemix } as any; 
     const newDraft = this.gemini.compileStructuredPrompt(remixedPersona);
 
@@ -396,5 +637,12 @@ export class CheckComponent implements OnInit, AfterViewChecked {
 
   proceedToSim() {
     this.wf.setStep('simulation');
+  }
+
+  // BRIDGE TO ANTI-BIAS TOOL
+  openAntiBiasAudit() {
+      const currentDraft = this.wf.state().currentDraft;
+      this.wf.antiBiasContext.set(currentDraft);
+      this.switchToAntiBias.emit();
   }
 }

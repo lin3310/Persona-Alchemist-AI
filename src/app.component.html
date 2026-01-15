@@ -1,3 +1,4 @@
+
 <div class="h-screen w-full relative overflow-hidden">
   
   @switch (currentView()) {
@@ -29,7 +30,7 @@
         }
         @case ('check') {
           <div class="h-full page-enter">
-            <app-check></app-check>
+            <app-check (switchToAntiBias)="handleAntiBiasRequest()"></app-check>
           </div>
         }
         @case ('simulation') {
@@ -56,7 +57,7 @@
     }
     @case ('antibias') {
        <div class="h-full page-enter">
-         <app-antibias (close)="goHome()"></app-antibias>
+         <app-antibias (close)="handleAntiBiasExit()"></app-antibias>
       </div>
     }
   }

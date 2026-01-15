@@ -1,3 +1,4 @@
+
 import { Component, inject, signal, effect, Renderer2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WorkflowService } from './services/workflow.service';
@@ -73,6 +74,22 @@ export class AppComponent {
 
   switchToView(view: 'architect' | 'tool') {
     this.currentView.set(view);
+  }
+
+  // NEW: Transition from Pipeline (Check) to Anti-Bias
+  handleAntiBiasRequest() {
+    this.currentView.set('antibias');
+  }
+
+  // NEW: Return from Anti-Bias (either to home or pipeline depending on context)
+  handleAntiBiasExit() {
+    if (this.wf.antiBiasContext()) {
+       // Clear context and go back to pipeline
+       this.wf.antiBiasContext.set(null);
+       this.currentView.set('pipeline');
+    } else {
+       this.goHome();
+    }
   }
 
   goHome() {
